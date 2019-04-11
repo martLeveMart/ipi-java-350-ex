@@ -43,31 +43,67 @@ public class Employe {
         this.tempsPartiel = tempsPartiel;
     }
 
-    public Integer getNombreAnneeAnciennete() {
-        if(dateEmbauche != null && dateEmbauche.isBefore(LocalDate.now())){
-            return LocalDate.now().getYear() - dateEmbauche.getYear();
-        }
-        return 0;
+
+    /**
+     * Retourne le nombre d'année d'ancienneté de l'employé par rapport à sa date d'embauche (on ne prend pas en compte
+     * les mois et les jours. Il faut en revanche que la d'embauche soit non nulle et l'année antérieure à l'année courante
+     * sinon on renvoie une ancienneté de 0
+     *
+     * @return le nombre d'année d'ancienneté
+     */
+    public final Integer getNombreAnneeAnciennete() {
+        return dateEmbauche != null && LocalDate.now().getYear() >= dateEmbauche.getYear() ? LocalDate.now().getYear() - dateEmbauche.getYear() : 0;
+
     }
 
     public Integer getNbConges() {
         return Entreprise.NB_CONGES_BASE + this.getNombreAnneeAnciennete();
     }
 
-    public Integer getNbRtt(){
+    /**
+     * Nombre de jours de RTT =
+     *   Nombre de jours dans l'année
+     * – plafond maximal du forfait jours de la convention collective
+     * – nombre de jours de repos hebdomadaires
+     * – jours de congés payés
+     * – nombre de jours fériés tombant un jour ouvré
+     *
+     * Au prorata de son pourcentage d'activité (arrondi au supérieur)
+     *
+     * @return le nombre de jours de RTT
+     */
+    public Double getNbRtt(){
         return getNbRtt(LocalDate.now());
     }
 
-    public Integer getNbRtt(LocalDate d){
-        int i1 = d.isLeapYear() ? 365 : 366;
-        int var = 104;
+    public Double getNbRtt(LocalDate d){
+        int nbDayInYear = d.isLeapYear() ? 366 : 365;
+        int nbWeekEnd = 104;
+
         switch (LocalDate.of(d.getYear(),1,1).getDayOfWeek()){
-            case THURSDAY: if(d.isLeapYear()) var =  var + 1; break;
-            case FRIDAY: if(d.isLeapYear()) var =  var + 2; else var =  var + 1;
-            case SATURDAY: var = var + 1; break;
+            case FRIDAY:
+                if(d.isLeapYear())
+                    nbWeekEnd += 1;
+                break;
+            case SATURDAY:
+                if(d.isLeapYear())
+                    nbWeekEnd += 2;
+                else
+                    nbWeekEnd += 1;
+                break;
+            case SUNDAY:
+                nbWeekEnd += 1;
+                break;
+            default:
+                break;
         }
-        int monInt = (int) Entreprise.joursFeries(d).stream().filter(localDate -> localDate.getDayOfWeek().getValue() <= DayOfWeek.FRIDAY.getValue()).count();
-        return (int) Math.ceil((i1 - Entreprise.NB_JOURS_MAX_FORFAIT - var - Entreprise.NB_CONGES_BASE - monInt) * tempsPartiel);
+        int nbJF = (int) Entreprise.joursFeries(d).stream().filter(localDate -> localDate.getDayOfWeek().getValue() <= DayOfWeek.FRIDAY.getValue()).count();
+
+        //Les RTT sont des Integers car les CP sont déclaré en Integer
+        int nbRtt = nbDayInYear - Entreprise.NB_JOURS_MAX_FORFAIT - nbWeekEnd - Entreprise.NB_CONGES_BASE - nbJF;
+        if(tempsPartiel < 0)
+            return 0.0;
+        return nbRtt * tempsPartiel;
     }
 
     /**
@@ -101,11 +137,15 @@ public class Employe {
             prime = Entreprise.primeAnnuelleBase() * (this.performance + Entreprise.INDICE_PRIME_BASE) + primeAnciennete;
         }
         //Au pro rata du temps partiel.
-        return prime * this.tempsPartiel;
+        return Math.round(prime * this.tempsPartiel * 100)/100.0;
     }
 
     //Augmenter salaire
-    //public void augmenterSalaire(double pourcentage){}
+    public void augmenterSalaire(double pourcentage){
+        //si augmentation de salaire négative ou pas de salaire ne fait rien
+        if(pourcentage > 0 && salaire != null)
+            salaire += salaire * pourcentage;
+    }
 
     public Long getId() {
         return id;
