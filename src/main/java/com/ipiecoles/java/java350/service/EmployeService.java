@@ -32,6 +32,7 @@ public class EmployeService {
      * @throws EmployeException Si on arrive au bout des matricules possibles
      * @throws EntityExistsException Si le matricule correspond à un employé existant
      */
+  
     public void embaucheEmploye(String nom, String prenom, Poste poste, NiveauEtude niveauEtude, Double tempsPartiel) throws EmployeException {
 
         //Récupération du type d'employé à partir du poste
@@ -98,6 +99,7 @@ public class EmployeService {
             throw new EmployeException("L'objectif de chiffre d'affaire ne peut être négatif ou null !");
 
         }else if(matricule == null || !matricule.startsWith("C")){
+
             throw new EmployeException("Le matricule ne peut être null et doit commencer par un C !");
         }
         //Recherche de l'employé dans la base
@@ -123,6 +125,7 @@ public class EmployeService {
         //Cas 2
         else if(caTraite >= objectifCa*0.8){
             performance = Math.max(Entreprise.PERFORMANCE_BASE, employe.getPerformance() - 2);
+
         }
         //Si autre cas, on reste à la performance de base.
 
